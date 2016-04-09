@@ -6,6 +6,7 @@ var fs = require('fs')
 var multipart = require('connect-multiparty');
 var multipartMiddleware = multipart();
 var async = require('async');
+var csv = require('fast-csv');
 
 function pad(n, width, z) {
     z = z || '0';
@@ -93,37 +94,78 @@ router.get('/guests/list/:id', function (req, res) {
         });
 });
 
-router.post('/guests/list', function (req, res) {
+//router.post('/guests/list', function (req, res) {
+//    console.log(req.body[4]);
+//    var db = req.db;
+//    async.forEach(req.body, function (guest) {
+//        //console.log('updating: ' + guest._id);
+//        //var id = mongo.helper.toObjectID(guest._id);
+
+//        //db.collection('guests').update({
+//        //    _id: id
+//        //},
+//        //{
+//        //    '$set': {
+//        //        number: guest.number,
+//        //        name: guest.name,
+//        //        email: guest.email,
+//        //        sent: guest.sent,
+//        //        quantity: parseInt(guest.quantity),
+//        //        kids_quantity: parseInt(guest.kids_quantity),
+//        //        confirmed: guest.confirmed,
+//        //        quantity_confirmed: parseInt(guest.quantity_confirmed),
+//        //        kids_quantity_confirmed: parseInt(guest.kids_quantity_confirmed),
+//        //        confirmed_date: guest.confirmed_date
+//        //    }
+//        //},
+//        //function (err, result) {
+//        //    if (err) throw err;
+//        //    if (result) {
+//        //        console.log('Updated!')
+//        //        res.json({ message: 'Updated!' });
+//        //    };
+//        //});
+//    });
+//});
+
+router.post('/guests/save-list', function (req, res) {
     console.log(req.body[4]);
     var db = req.db;
-    async.forEach(req.body, function (guest) {
-        //console.log('updating: ' + guest._id);
-        //var id = mongo.helper.toObjectID(guest._id);
+    async.forEach(req.body, function (guest, callback) {
+        console.log('updating: ' + guest._id);
 
-        //db.collection('guests').update({
-        //    _id: id
-        //},
-        //{
-        //    '$set': {
-        //        number: guest.number,
-        //        name: guest.name,
-        //        email: guest.email,
-        //        sent: guest.sent,
-        //        quantity: parseInt(guest.quantity),
-        //        kids_quantity: parseInt(guest.kids_quantity),
-        //        confirmed: guest.confirmed,
-        //        quantity_confirmed: parseInt(guest.quantity_confirmed),
-        //        kids_quantity_confirmed: parseInt(guest.kids_quantity_confirmed),
-        //        confirmed_date: guest.confirmed_date
-        //    }
-        //},
-        //function (err, result) {
-        //    if (err) throw err;
-        //    if (result) {
-        //        console.log('Updated!')
-        //        res.json({ message: 'Updated!' });
-        //    };
-        //});
+        saveGuest(guest, db, function (err, result) {
+            if (err) throw err;
+            if (result) {
+                console.log('Updated ' + guest.name);
+                callback();
+            };
+        });
+
+        
+    }, function (err) {
+        console.log('iterating done');
+        res.json({ message: 'Updated!' });
+    });
+});
+
+router.post('/guests/save-list-confirmed', function (req, res) {
+    var db = req.db;
+    async.forEach(req.body, function (guest, callback) {
+        console.log('updating: ' + guest._id);
+
+        saveGuestConfirmed(guest, db, function (err, result) {
+            if (err) throw err;
+            if (result) {
+                console.log('Updated ' + guest.name);
+                callback();
+            };
+        });
+
+
+    }, function (err) {
+        console.log('iterating done');
+        res.json({ message: 'Updated!' });
     });
 });
 
@@ -220,11 +262,30 @@ router.post('/guests/multiload', multipartMiddleware, function (req, res) {
 router.post('/guests/list/:_id', function (req, res) {
     var db = req.db;
 
-    var quantity_confirmed = parseInt(req.body.quantity_confirmed) || 0;
-    var kids_quantity_confirmed = parseInt(req.body.kids_quantity_confirmed) || 0;
+    saveGuest(req.body, db, function (err, result) {
+        if (err) throw err;
+        if (result) {
+            console.log('Updated!')
+            res.json({ message: 'Updated!' });
+        };
+    });
+});
 
-    console.log('confirmed: ' + req.body.confirmed);
-    var confirmed = req.body.confirmed;
+router.get('/guests/export', function (req, res) {
+    var db = req.db;
+    db.collection('guests').find().toArray(function (err, items) {
+        console.log(items.length);
+        csv
+           .writeToStream(res, items, { headers: true });
+    });
+});
+
+function saveGuest(guest, db, callback) {
+    var quantity_confirmed = parseInt(guest.quantity_confirmed) || 0;
+    var kids_quantity_confirmed = parseInt(guest.kids_quantity_confirmed) || 0;
+
+    console.log('confirmed: ' + guest.confirmed);
+    var confirmed = guest.confirmed;
 
     if (!confirmed) { //there's no value
         confirmed = 'pending';
@@ -236,28 +297,40 @@ router.post('/guests/list/:_id', function (req, res) {
         kids_quantity_confirmed = 0;
     }
     db.collection('guests').update({
-        _id: mongo.helper.toObjectID(req.body._id)
+        _id: mongo.helper.toObjectID(guest._id)
     },
     {
         '$set': {
-            number: req.body.number,
-            name: req.body.name,
-            email: req.body.email,
-            sent: req.body.sent,
-            quantity: parseInt(req.body.quantity) || 0,
-            kids_quantity: parseInt(req.body.kids_quantity) || 0,
+            number: guest.number,
+            name: guest.name,
+            email: guest.email,
+            sent: guest.sent,
+            quantity: parseInt(guest.quantity) || 0,
+            kids_quantity: parseInt(guest.kids_quantity) || 0,
             confirmed: confirmed,
             quantity_confirmed: quantity_confirmed,
             kids_quantity_confirmed: kids_quantity_confirmed,
-            confirmed_date: req.body.confirmed_date
+            confirmed_date: guest.confirmed_date
         }
     }, function (err, result) {
-        if (err) throw err;
-        if (result) {
-            console.log('Updated!')
-            res.json({ message: 'Updated!' });
-        };
+        callback(err, result);
     });
-});
+}
 
+function saveGuestConfirmed(guest, db, callback) {
+    db.collection('guests').update({
+        _id: mongo.helper.toObjectID(guest._id)
+    },
+    {
+        '$set': {
+            group: guest.group,
+            listName: guest.listName,
+            listLastName: guest.listLastName,
+            table: guest.table,
+            specialMenu: guest.specialMenu
+        }
+    }, function (err, result) {
+        callback(err, result);
+    });
+}
 module.exports = router;

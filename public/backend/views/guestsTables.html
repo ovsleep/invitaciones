@@ -1,0 +1,61 @@
+﻿<h2>Invitados</h2>
+<div class="row">
+    <div class="form-group col-sm-3">
+        <input type="text" class="form-control" placeholder="Buscar por nombre" ng-model="search.name">
+    </div>
+    <div class="form-group col-sm-12"><button class="btn btn-info" ng-click="export()">Exportar</button></div>
+</div>
+<table class="table table-condensed">
+    <tr>
+        <td>Nombre Enviado</td>
+        <td>Email</td>
+        <td>Grupo</td>
+        <td>Nombre</td>
+        <td>Apellido</td>
+        <td>Mesa</td>
+        <td>Menu Especial</td>
+        <td>#</td>
+        <td># Niños</td>
+    </tr>
+    <tbody>
+        <tr>
+            <th colspan="7"></th>
+            <th><h4>{{resultValue | sumOfValue:'quantity_confirmed'}}</h4></th>
+            <th><h4>{{resultValue | sumOfValue:'kids_quantity_confirmed'}}</h4></th>
+        </tr>
+        <tr ng-repeat="guest in resultValue=(guests | filter: search)">
+            
+            <td>
+                <span>{{guest.name}}</span>
+            </td>
+            <td>
+                <span>{{guest.email}}</span>
+            </td>
+            
+            <td>
+                <input class="form-control" ng-model="guest.group" />
+            </td>
+            <td>
+                <input class="form-control" ng-model="guest.listName" />
+            </td>
+            <td>
+                <input class="form-control" ng-model="guest.listLastName" />
+            </td>
+            <td>
+                <input class="form-control" ng-model="guest.table" />
+            </td>
+            <td>
+                <input class="form-control" ng-model="guest.specialMenu" />
+            </td>
+            
+            <td>
+                <span>{{guest.quantity_confirmed}}</span>
+            </td>
+            <td>
+                <span>{{guest.kids_quantity_confirmed}}</span>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<br />
+<button ng-click="saveAllConfirmed()">Guardar</button>

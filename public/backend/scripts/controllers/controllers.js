@@ -55,6 +55,18 @@ app.config(['$routeProvider', function ($routeProvider) {
             requiresLogin: true
         }
     })
+    .when('/invitados/mesas', {
+        controller: 'GuestsController',
+        templateUrl: '/backend/views/guestsTables.html',
+        resolve: {
+            guests: ["MultiGuestLoader", function (MultiGuestLoader) {
+                return MultiGuestLoader();
+            }]
+        },
+        access: {
+            requiresLogin: true
+        }
+    })
     .when('/invitados/cargar', {
         controller: 'GuestsUploaderController',
         templateUrl: '/backend/views/guestsUploader.html',
